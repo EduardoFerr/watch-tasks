@@ -1,0 +1,95 @@
+# A linha 'version' foi removida por ser obsoleta.
+
+services:
+  # Serviço do Backend (API Node.js/Fastify)
+  backend:
+    container_name: task_manager_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/taskdb?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - JAEGER_AGENT_HOST=jaeger
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+      - jaeger
+    networks:
+      - app-network
+
+  # Serviço do Frontend (Aplicação Vue.js)
+  frontend:
+    container_name: task_manager_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    # --- ALTERAÇÃO PRINCIPAL AQUI ---
+    # Este comando sobrepõe o CMD do Dockerfile e inicia o servidor de desenvolvimento do Vite.
+    command: npm run dev
+    networks:
+      - app-network
+
+  # Serviço do Banco de Dados (PostgreSQL)
+  db:
+    container_name: task_manager_db
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=taskdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # Serviço de Cache (Redis)
+  redis:
+    container_name: task_manager_redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # Serviço de Mensageria (RabbitMQ)
+  rabbitmq:
+    container_name: task_manager_rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-network
+
+  # Serviço de Observabilidade (Jaeger)
+  jaeger:
+    container_name: task_manager_jaeger
+    image: jaegertracing/all-in-one:1.28
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

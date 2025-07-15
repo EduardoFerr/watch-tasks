@@ -1,0 +1,49 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Build
+dist/
+build/
+.cache/
+.next/
+out/
+
+# Test
+coverage/
+*.lcov
+
+# Env files
+.env
+.env.*.local
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.sw?
+
+# Others
+*.tgz
+*.zip
+*.tar
+*.bak
+*.old
+*.ps1
+# Docker
+**/docker-compose.override.yml
+**/.docker/
