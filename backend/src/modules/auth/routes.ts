@@ -15,8 +15,8 @@ interface GitHubEmail {
   verified: boolean;
 }
 
-const GITHUB_CLIENT_ID = 'Ov23li4dOoZDXV58mEXp';
-const GITHUB_CLIENT_SECRET = 'e4a786669fafe2cdae2fc4049f1a735b14d7959e';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
 
 export default async function authRoutes(fastify: FastifyInstance) {
 
