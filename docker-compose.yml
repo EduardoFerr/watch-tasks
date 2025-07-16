@@ -1,27 +1,25 @@
-# A linha 'version' foi removida por ser obsoleta.
-
 services:
   backend:
-  container_name: task_manager_backend
-  build:
-    context: ./backend
-    dockerfile: Dockerfile
-  ports:
-    - "3333:3333"
-  volumes:
-    - ./backend:/app
-    - /app/node_modules
-  env_file:
-    - ./backend/.env
-  depends_on:
-    - db
-    - redis
-    - rabbitmq
-    - jaeger
-  networks:
-    - app-network
+    container_name: task_manager_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    # Carrega as variáveis de ambiente a partir de um ficheiro .env
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+      - jaeger
+    networks:
+      - app-network
 
-  # Serviço do Frontend (Aplicação Vue.js)
   frontend:
     container_name: task_manager_frontend
     build:
@@ -32,16 +30,13 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    # --- ALTERAÇÃO PRINCIPAL AQUI ---
-    # Este comando sobrepõe o CMD do Dockerfile e inicia o servidor de desenvolvimento do Vite.
-    command: npm run dev
     networks:
       - app-network
 
-  # Serviço do Banco de Dados (PostgreSQL)
   db:
     container_name: task_manager_db
     image: postgres:14-alpine
+    # As variáveis do DB podem vir de um .env global ou ficar aqui para simplicidade
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
@@ -53,7 +48,6 @@ services:
     networks:
       - app-network
 
-  # Serviço de Cache (Redis)
   redis:
     container_name: task_manager_redis
     image: redis:7-alpine
@@ -62,7 +56,6 @@ services:
     networks:
       - app-network
 
-  # Serviço de Mensageria (RabbitMQ)
   rabbitmq:
     container_name: task_manager_rabbitmq
     image: rabbitmq:3-management
@@ -72,7 +65,6 @@ services:
     networks:
       - app-network
 
-  # Serviço de Observabilidade (Jaeger)
   jaeger:
     container_name: task_manager_jaeger
     image: jaegertracing/all-in-one:1.28

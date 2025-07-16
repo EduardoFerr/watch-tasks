@@ -1,0 +1,52 @@
+# Define o nome do nosso workflow para o frontend.
+name: Frontend CI
+
+# Define os mesmos gatilhos que o workflow do backend.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Define os jobs a serem executados.
+jobs:
+  # O nosso job chama-se 'build-and-test-frontend'.
+  build-and-test-frontend:
+    # Usa a mesma máquina virtual 'ubuntu-latest'.
+    runs-on: ubuntu-latest
+
+    # Define os passos do job.
+    steps:
+      # Passo 1: Clona o repositório.
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      # Passo 2: Configura o ambiente Node.js.
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          # Usa o cache do npm, mas agora aponta para o package-lock.json do frontend.
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Passo 3: Instala as dependências do frontend.
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: ./frontend # Define o diretório de trabalho
+
+      # Passo 4: Executa o linter para verificar a qualidade do código.
+      # (NOTA: Precisamos de adicionar o script 'lint' ao nosso package.json)
+      # - name: Executar Linter
+      #   run: npm run lint
+      #   working-directory: ./frontend
+
+      # Passo 5: Executa o build de produção para garantir que a aplicação compila sem erros.
+      - name: Executar Build
+        run: npm run build
+        working-directory: ./frontend
+
+      # Passo 6 (Opcional): Executa os testes de componentes com Vitest.
+      # - name: Executar Testes de Componentes
+      #   run: npm run test
+      #   working-directory: ./frontend
