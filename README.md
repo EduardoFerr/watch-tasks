@@ -105,9 +105,9 @@ docker compose exec backend npx prisma db push
 ## 🔮 Próximos Passos
 
 - ✅ Implementar testes unitários e de integração com Jest
-- ✅ Criar pipeline de CI/CD com GitHub Actions
-- ✅ Configurar mensageria com RabbitMQ para tarefas assíncronas
-- ✅ Implementar deploy da aplicação
+- ☐ Criar pipeline de CI/CD com GitHub Actions
+- ☐ Configurar mensageria com RabbitMQ para tarefas assíncronas
+- ☐ Implementar deploy da aplicação
 
 ---
 

@@ -1,0 +1,48 @@
+# Define o nome do nosso workflow, que aparecerá no separador "Actions" do GitHub.
+name: Backend CI
+
+# Define os gatilhos (eventos) que irão iniciar este workflow.
+on:
+  # Executa sempre que houver um push para o ramo 'main'.
+  push:
+    branches: [ "main" ]
+  # Executa sempre que um pull request for aberto ou atualizado para o ramo 'main'.
+  pull_request:
+    branches: [ "main" ]
+
+# Define os "jobs" (trabalhos) que serão executados. Podemos ter vários.
+jobs:
+  # O nosso único job, por agora, chama-se 'test-backend'.
+  test-backend:
+    # Define o tipo de máquina virtual onde o nosso job irá correr.
+    # 'ubuntu-latest' é uma escolha comum e económica.
+    runs-on: ubuntu-latest
+
+    # Define os passos que o job irá executar em sequência.
+    steps:
+      # Passo 1: Clona o nosso repositório para dentro da máquina virtual.
+      # 'actions/checkout@v3' é uma ação pré-feita pela comunidade.
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      # Passo 2: Configura o ambiente Node.js.
+      # Especificamos a versão do Node para garantir a consistência.
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          # Usa o cache do npm para acelerar a instalação de dependências em futuras execuções.
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      # Passo 3: Instala as dependências do backend.
+      # Usamos 'npm ci' em vez de 'npm install' porque é mais rápido e seguro para ambientes de CI.
+      # Ele instala as versões exatas definidas no package-lock.json.
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: ./backend # Define o diretório de trabalho para este comando
+
+      # Passo 4: Executa os testes unitários e de integração.
+      - name: Executar testes
+        run: npm test
+        working-directory: ./backend # Define o diretório de trabalho para este comando

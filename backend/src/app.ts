@@ -1,16 +1,15 @@
-// Importa e inicializa o nosso sistema de tracing
-import './tracing.js';
-
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import jwt from '@fastify/jwt';
+import jwt, { type JWT } from '@fastify/jwt';
 import websocket from '@fastify/websocket';
+import { PrismaClient } from '@prisma/client';
 import prismaPlugin from './plugins/prisma.js';
 import redisPlugin from './plugins/redis.js';
 import authRoutes from './modules/auth/routes.js';
 import taskRoutes from './modules/tasks/routes.js';
 import websocketRoutes from './modules/ws/routes.js';
 
+// Adiciona a tipagem para o 'user' no request do Fastify.
 declare module '@fastify/jwt' {
   export interface FastifyJWT {
     user: {
@@ -21,58 +20,73 @@ declare module '@fastify/jwt' {
   }
 }
 
+// Adiciona a tipagem para as nossas funções de decorator e plugins
 declare module 'fastify' {
   export interface FastifyInstance {
     broadcast(message: any): void;
+    authenticate(request: any, reply: any): Promise<void>;
+    prisma: PrismaClient;
+    jwt: JWT;
+    githubOAuth: any; // Adicionado para o plugin de OAuth
   }
 }
 
-const fastify = Fastify({
-  logger: true
-});
-
-fastify.register(cookie);
-fastify.register(jwt, {
-  secret: 'segredo', // NOTA: lembrar de trocar por variável de ambiente em produção
-  cookie: {
-    cookieName: 'token',
-    signed: false,
+function buildApp(options: { logger: boolean, mocks?: any } = { logger: true }) {
+  // O tracing só é inicializado se não estivermos em modo de teste.
+  if (process.env.NODE_ENV !== 'test') {
+    import('./tracing.js');
   }
-});
-fastify.register(websocket);
-fastify.register(prismaPlugin);
-fastify.register(redisPlugin);
 
-fastify.decorate('broadcast', function (message: any) {
-  for (const client of this.websocketServer.clients) {
-    client.send(JSON.stringify(message));
+  const fastify: FastifyInstance = Fastify({
+    logger: options.logger
+  });
+
+  // Se estivermos em modo de teste, usa os mocks.
+  if (options.mocks) {
+    fastify.decorate('prisma', options.mocks.prisma);
+    fastify.decorate('authenticate', options.mocks.authenticate);
+  } else {
+    // Caso contrário, regista os plugins reais.
+    fastify.register(jwt, { 
+      secret: 'supersecret', 
+      cookie: { 
+        cookieName: 'token', 
+        signed: false 
+      } 
+    });
+    fastify.register(prismaPlugin);
+    fastify.register(redisPlugin);
+
+    // E o decorator de autenticação real.
+    fastify.decorate('authenticate', async function (request, reply) {
+      try {
+        await request.jwtVerify();
+      } catch (err) {
+        reply.code(401).send({ message: 'Unauthorized' });
+      }
+    });
   }
-});
 
-fastify.decorate('authenticate', async function (request, reply) {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.send(err);
-  }
-});
+  fastify.register(cookie);
+  fastify.register(websocket);
+  
+  // Decorator de Broadcast
+  fastify.decorate('broadcast', function (message: any) {
+    for (const client of this.websocketServer.clients) {
+      client.send(JSON.stringify(message));
+    }
+  });
 
-fastify.register(authRoutes);
-fastify.register(taskRoutes, { prefix: '/tasks' });
-fastify.register(websocketRoutes);
+  // Regista as rotas
+  fastify.register(authRoutes);
+  fastify.register(taskRoutes, { prefix: '/tasks' });
+  fastify.register(websocketRoutes);
 
-// Rota de teste
-fastify.get('/', async (request, reply) => {
-  return { status: 'API is running' };
-});
+  fastify.get('/', async (request, reply) => {
+    return { status: 'API is running' };
+  });
+  
+  return fastify;
+}
 
-const start = async () => {
-  try {
-    await fastify.listen({ port: 3333, host: '0.0.0.0' });
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-};
-
-start();
+export default buildApp;

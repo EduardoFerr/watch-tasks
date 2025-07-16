@@ -1,27 +1,35 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyOAuth2 from '@fastify/oauth2';
+
+// Interfaces para os dados da API do GitHub
+interface GitHubUser {
+  id: number;
+  name: string;
+  email: string | null;
+  avatar_url: string;
+}
+
+interface GitHubEmail {
+  email: string;
+  primary: boolean;
+  verified: boolean;
+}
+
 const GITHUB_CLIENT_ID = 'Ov23li4dOoZDXV58mEXp';
 const GITHUB_CLIENT_SECRET = 'e4a786669fafe2cdae2fc4049f1a735b14d7959e';
 
-
 export default async function authRoutes(fastify: FastifyInstance) {
 
-  // Regista o plugin OAuth2 com a configuração de cookie explícita
   fastify.register(fastifyOAuth2, {
     name: 'githubOAuth',
     scope: ['read:user', 'user:email'],
     credentials: {
-      client: {
-        id: GITHUB_CLIENT_ID,
-        secret: GITHUB_CLIENT_SECRET,
-      },
+      client: { id: GITHUB_CLIENT_ID, secret: GITHUB_CLIENT_SECRET },
       auth: fastifyOAuth2.GITHUB_CONFIGURATION,
     },
     startRedirectPath: '/auth/github',
     callbackUri: 'http://localhost:3333/auth/github/callback',
-    cookie: {
-      path: '/',
-    }
+    cookie: { path: '/' }
   });
 
   fastify.get('/auth/github/callback', async function (request, reply) {
@@ -29,35 +37,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const { token } = await this.githubOAuth.getAccessTokenFromAuthorizationCodeFlow(request);
 
       const githubUserResponse = await fetch('https://api.github.com/user', {
-        headers: {
-          Authorization: `token ${token.access_token}`,
-        },
+        headers: { Authorization: `token ${token.access_token}` },
       });
-      const githubUser = await githubUserResponse.json();
+      const githubUser = await githubUserResponse.json() as GitHubUser;
 
-      // --- LÓGICA DE FALLBACK DE E-MAIL AQUI ---
       let userEmail = githubUser.email;
 
-      // Se o e-mail público for nulo, busca na lista de e-mails do utilizador.
       if (!userEmail) {
         const emailsResponse = await fetch('https://api.github.com/user/emails', {
-          headers: {
-            Authorization: `token ${token.access_token}`,
-          },
+          headers: { Authorization: `token ${token.access_token}` },
         });
-        const emails = await emailsResponse.json();
+        const emails = await emailsResponse.json() as GitHubEmail[];
         
-        const primaryEmail = emails.find((email: any) => email.primary && email.verified);
+        const primaryEmail = emails.find(e => e.primary && e.verified);
         
         if (!primaryEmail) {
           return reply.code(400).send({ message: 'Não foi possível encontrar um e-mail verificado na sua conta do GitHub.' });
         }
         userEmail = primaryEmail.email;
       }
-      // --- FIM DA LÓGICA DE FALLBACK ---
 
       let user = await fastify.prisma.user.findUnique({
-        where: { email: userEmail }, 
+        where: { email: userEmail },
       });
 
       if (!user) {
